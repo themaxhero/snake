@@ -1,6 +1,7 @@
 #include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <math.h>
 #include "raylib.h"
 #include "raymath.h"
@@ -23,10 +24,26 @@ typedef struct Player {
   int size;
 } PLAYER;
 
-Vector2 NewFoodLocation(){
+Vector2 RandomPosition(){
   int x = rand() % BLOCKS_PER_ROW;
   int y = rand() % BLOCKS_PER_COL;
   return (Vector2){x, y};
+}
+
+bool ThereIsFoodInPosition(Vector2 position, Vector2* food, int food_count){
+  for(int i = 0; i < food_count; i++){
+    if (position.x == food[i].x && position.y == food[i].y){
+      return true;
+    }
+  }
+  return false;
+}
+
+Vector2 NewFoodLocation(Vector2* food, int food_count){
+  Vector2 position = RandomPosition();
+  if (!ThereIsFoodInPosition(position, food, food_count))
+    return position;
+  return NewFoodLocation(food, food_count);
 }
 
 void Update(PLAYER* player, Vector2* food, int food_count){
@@ -34,8 +51,9 @@ void Update(PLAYER* player, Vector2* food, int food_count){
 
   for(int i = 0; i < food_count; i++) {
     if (player->position.x == food[i].x && player->position.y == food[i].y){
-      food[i] = NewFoodLocation();
+      food[i] = NewFoodLocation(food, food_count);
       player->size += 1;
+      printf("Player Size: %d\n", player->size);
     }
   }
 }
@@ -82,13 +100,13 @@ int main(int argc, char *argv[]){
   player->direction = (Vector2){1,0};
   Vector2* food = malloc(8 * sizeof(Vector2));
   for(int i = 0; i < 8; i++)
-    food[i] = NewFoodLocation();
+    food[i] = NewFoodLocation(food, 8);
 
   InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "SNAKE");
 
   while (!WindowShouldClose()) {
     if (untilTick < 0) {
-      Update(player);
+      Update(player, food, 8);
       untilTick = TICK_TIMEOUT;
     }
     untilTick -= GetFrameTime();
@@ -108,7 +126,7 @@ int main(int argc, char *argv[]){
 
     BeginDrawing();
       ClearBackground(BLACK);
-      DrawPlayer(player, food, 8);
+      DrawPlayer(player);
       DrawFood(food, 8);
       DrawGameGrid();
     EndDrawing();
