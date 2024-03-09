@@ -1,3 +1,4 @@
+#include <string.h>
 #include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -15,7 +16,7 @@
 #define BLOCK_COUNT BLOCKS_PER_ROW * BLOCKS_PER_COL
 #define PLAYER_STARTING_X ceil(BLOCKS_PER_ROW / 2)
 #define PLAYER_STARTING_Y ceil(BLOCKS_PER_COL / 2)
-#define TICK_TIMEOUT 0.3
+#define TICK_TIMEOUT 0.2
 
 
 typedef struct PlayerNode {
@@ -54,15 +55,18 @@ Vector2 NewFoodLocation(Vector2* food, int food_count){
 
 void GrowPlayer(PLAYER* player){
   if (player->size + 1 > player->preallocated_tail) {
-    PlayerNode* old_tail = player->tail;
-    int new_prellocated_tail = player->preallocated_tail+10;
+    PlayerNode* old_tail = malloc(sizeof(PlayerNode)*player->preallocated_tail);
+    memcpy(old_tail, player->tail, sizeof(PlayerNode) * player->preallocated_tail);
+    int new_prellocated_tail = player->preallocated_tail + 16;
     player->tail = malloc(sizeof(PlayerNode)*new_prellocated_tail);
+    memcpy(player->tail, old_tail, sizeof(PlayerNode) * new_prellocated_tail);
     player->preallocated_tail = new_prellocated_tail;
   }
-  player->tail[player->size - 1].position = Vector2Subtract(
-      player->tail[player->size - 2].position,
-      player->tail[player->size - 2].direction
-  );
+  if (player->size == 0) {
+    player->tail[0].position = player->head.position;
+  } else {
+    player->tail[player->size].position = player->tail[player->size - 1].position;
+  }
   player->size += 1;
 }
 
@@ -143,7 +147,6 @@ void DrawGameGrid(){
 
 int main(int argc, char *argv[]){
   srand(time(NULL));
-  float untilTick = TICK_TIMEOUT;
   PLAYER* player = malloc(sizeof(PLAYER));
   player->head = (PlayerNode){
     (Vector2){PLAYER_STARTING_X, PLAYER_STARTING_Y},
@@ -155,15 +158,17 @@ int main(int argc, char *argv[]){
   Vector2* food = malloc(8 * sizeof(Vector2));
   for(int i = 0; i < 8; i++)
     food[i] = NewFoodLocation(food, 8);
+  float until_tick = TICK_TIMEOUT;
 
   InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "SNAKE");
 
   while (!WindowShouldClose()) {
-    if (untilTick < 0) {
+    if (until_tick < 0) {
       Update(player, food, 8);
-      untilTick = TICK_TIMEOUT;
+      until_tick = TICK_TIMEOUT;
     }
-    untilTick -= GetFrameTime();
+
+    until_tick -= GetFrameTime();
 
     // Handle Player Direction changes
     if (IsKeyDown(KEY_A) && player->head.direction.x == 0){
